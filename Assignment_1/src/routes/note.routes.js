@@ -4,8 +4,13 @@ const router = express.Router();
 
 const {
   createNote,
-} = require('../controllers/note.controller');
+  multipleNotes,
+  getAllNotes,
+} = require('../controllers/note.controller.js');
 
-router.post('/create', createNote);
+router.post('/', createNote);
+router.post('/multiple', multipleNotes);
+router.get('/',getAllNotes);
+
 
 module.exports = router;

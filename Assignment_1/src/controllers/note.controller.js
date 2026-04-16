@@ -1,5 +1,7 @@
 const Note = require('../models/note.model.js');
 
+
+//// Create a new note
 const createNote = async (req, res) => {
   try {
     const { title, content, category } = req.body;
@@ -17,4 +19,35 @@ const createNote = async (req, res) => {
   }
 };
 
-module.exports = { createNote };
+
+////Create multiple notes
+const multipleNotes = async (req,res) =>{
+  try{
+      const notesData = req.body;
+      const createdNotes = await Note.insertMany(notesData);
+      res.status(201).json({
+          msg: 'Multiple notes created successfully.',
+          notes: createdNotes
+      }); 
+  }
+  catch(err){
+      res.status(500).json({ msg: 'Server error.', error: err.message });
+  }
+}
+
+////get all notes
+const getAllNotes = async (req,res)=>{
+  try{
+     const notes = await Note.find();
+     res.status(200).json({
+         msg: 'Notes retrieved successfully.',
+         notes: notes
+     });
+  }
+  catch(err){
+      res.status(500).json({ msg: 'Server error.', error: err.message });
+  }
+}
+
+
+module.exports = { createNote, multipleNotes, getAllNotes };
