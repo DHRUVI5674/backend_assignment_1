@@ -1,24 +1,29 @@
 const mongoose = require('mongoose');
 
-const noteSchema = new mongoose.Schema({
-    title:{
-        type:String,
-        required:true
+const noteSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, "Title is required"],
+      trim: true
     },
-    content:{
-        type:String,
-        required:true   
+    content: {
+      type: String,
+      required: [true, "Content is required"],
+      trim: true
     },
-    category:{
-        type:String,
-        required:true
+    category: {
+      type: String,
+      enum: ["work", "personal", "study"],
+      default: "personal"
     },
-    isPinned:{
-        type:Boolean,
-        required:true,
-        default:false
+    isPinned: {
+      type: Boolean,
+      default: false
     }
-},{timestamps:true})
+  },
+  { timestamps: true }
+);
 
 const Note = mongoose.model('Note', noteSchema);
 

@@ -1,165 +1,314 @@
+const mongoose = require('mongoose');
 const Note = require('../models/note.model.js');
+
+// Helper
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 
 //// Create a new note
 const createNote = async (req, res) => {
   try {
-    const { title, content, category } = req.body;
+    const { title, content, category, isPinned } = req.body;
 
-    const newNote = new Note({ title, content, category });
-    await newNote.save();
+    if (!title || !content) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and content are required",
+        data: null
+      });
+    }
+
+    const newNote = await Note.create({ title, content, category, isPinned });
 
     res.status(201).json({
       success: true,
-      msg:  'Note created successfully.',
-      note: newNote,
+      message: "Note created successfully",
+      data: newNote
     });
 
   } catch (error) {
-    res.status(500).json({ msg: 'Server error.', error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      data: null
+    });
   }
 };
 
 
-////Create multiple notes
-const multipleNotes = async (req,res) =>{
-  try{
-      const notesData = req.body;
-      const createdNotes = await Note.insertMany(notesData);
-      res.status(201).json({
-        success: true,
-          msg: 'Multiple notes created successfully.',
-          notes: createdNotes
-      }); 
-  }
-  catch(err){
-      res.status(500).json({ msg: 'Server error.', error: err.message });
-  }
-}
-
-////get all notes
-const getAllNotes = async (req,res)=>{
-  try{
-     const notes = await Note.find();
-     res.status(200).json({
-         success: true,
-         msg: 'Notes retrieved successfully.',
-         notes: notes
-     });
-  }
-  catch(err){
-      res.status(500).json({ msg: 'Server error.', error: err.message });
-  }
-}
-
-////get notes by id
-const getNotesById = async (req,res)=>{
-  try{
-      const noteId = req.params.id;
-      const note = await Note.findById(noteId);
-      if(!note){
-         return res.status(404).json({msg:"Note not found"});
-      }
-      res.status(200).json({
-        success: true,
-        msg:"Note retrieved successfully.",
-        note: note
-      })
-  }
-  catch(err){
-      res.status(500).json({msg : "Server error",error: err.message});
-  }
-}
-
-
-////update note by id
-const UpdateById = async (req,res) =>{
-  try{
-      const noteId = req.params.id;
-      const {title,content,category} = req.body;
-      const updatedNote = await Note.findByIdAndUpdate(noteId,{title,content,category},{new:true,overwrite : true});
-      if(!updatedNote){
-        return res.status(404).json({msg: "Note Not found"});
-      }
-      res.status(200).json({
-        success: true,
-        msg:"Note updated successfully.",
-        note:updatedNote,
-      })
-  }
-  catch(err){
-      res.status(500).json({msg : "Server error",error:err.message});
-  }
-}
-
-////Update specific fields only
-const UpdateFieldId = async (req,res) =>{
-  try{
-     const noteId = req.params.id;
-     const note = await Note.findByIdAndUpdate(noteId, req.body, {new:true}) ;
-     if(!note){
-        return res.status(404).json({msg: "Note Not found"});
-     }
-     res.status(200).json({
-      success: true,
-        msg: "Note retrieved successfully.",
-        note: note
-     });
-  }
-  catch(err){
-        res.status(500).json({msg : "Server error",error:err.message});
-  }
-}
-
-////Delete note by id
-const deleteById = async (req,res) =>{
-  try{
-    const noteId = req.params.id;
-    const deletedNote = await Note.findByIdAndDelete(noteId);
-    if(!deletedNote){
-      return res.status(404).json({msg:"Note Not found"});
-    }
-    res.status(200).json({
-      success: true,
-      msg: "Note deleted successfully.",
-      note: deletedNote
-    });
-  }
-  catch(err){
-    res.status(500).json({msg : "Server error",error : err.message});
-  }
-}
-
-
-////delete multiple notes by ids
-const deleteMulti = async (req, res) => {
+//// Create multiple notes
+const multipleNotes = async (req, res) => {
   try {
-    const noteIds = req.body; 
+    const { notes } = req.body;
 
-    if (!noteIds || noteIds.length === 0) {
+    if (!notes || !Array.isArray(notes) || notes.length === 0) {
       return res.status(400).json({
-        msg: "Please provide IDs"
+        success: false,
+        message: "Notes array is required and cannot be empty",
+        data: null
       });
     }
 
-    const deletedNotes = await Note.deleteMany({
-      _id: { $in: noteIds }
-    });
+    const createdNotes = await Note.insertMany(notes);
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
-      msg: "Notes deleted successfully.",
-      deletedCount: deletedNotes.deletedCount
+      message: `${createdNotes.length} notes created successfully`,
+      data: createdNotes
     });
 
   } catch (err) {
     res.status(500).json({
-      msg: "Server error",
-      error: err.message
+      success: false,
+      message: "Server error",
+      data: null
     });
   }
 };
 
 
+//// Get all notes
+const getAllNotes = async (req, res) => {
+  try {
+    const notes = await Note.find();
 
-module.exports = { createNote, multipleNotes, getAllNotes, getNotesById ,UpdateById, UpdateFieldId,deleteById,deleteMulti};
+    res.status(200).json({
+      success: true,
+      message: "Notes fetched successfully",
+      data: notes
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      data: null
+    });
+  }
+};
+
+
+//// Get note by ID
+const getNotesById = async (req, res) => {
+  try {
+    const noteId = req.params.id;
+
+    if (!isValidId(noteId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid note ID",
+        data: null
+      });
+    }
+
+    const note = await Note.findById(noteId);
+
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+        data: null
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Note fetched successfully",
+      data: note
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      data: null
+    });
+  }
+};
+
+
+//// PUT — Replace note completely
+const UpdateById = async (req, res) => {
+  try {
+    const noteId = req.params.id;
+    const { title, content, category, isPinned } = req.body;
+
+    if (!isValidId(noteId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid note ID",
+        data: null
+      });
+    }
+
+    if (!title || !content) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and content are required",
+        data: null
+      });
+    }
+
+    const updatedNote = await Note.findByIdAndUpdate(
+      noteId,
+      { title, content, category, isPinned },
+      { new: true, overwrite: true, runValidators: true }
+    );
+
+    if (!updatedNote) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+        data: null
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Note replaced successfully",
+      data: updatedNote
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      data: null
+    });
+  }
+};
+
+
+//// PATCH — Update specific fields
+const UpdateFieldId = async (req, res) => {
+  try {
+    const noteId = req.params.id;
+
+    if (!isValidId(noteId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid note ID",
+        data: null
+      });
+    }
+
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields provided to update",
+        data: null
+      });
+    }
+
+    const note = await Note.findByIdAndUpdate(
+      noteId,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+        data: null
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Note updated successfully",
+      data: note
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      data: null
+    });
+  }
+};
+
+
+//// Delete note by ID
+const deleteById = async (req, res) => {
+  try {
+    const noteId = req.params.id;
+
+    if (!isValidId(noteId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid note ID",
+        data: null
+      });
+    }
+
+    const deletedNote = await Note.findByIdAndDelete(noteId);
+
+    if (!deletedNote) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+        data: null
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Note deleted successfully",
+      data: null
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      data: null
+    });
+  }
+};
+
+
+//// Delete multiple notes
+const deleteMulti = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "IDs array is required and cannot be empty",
+        data: null
+      });
+    }
+
+    const result = await Note.deleteMany({
+      _id: { $in: ids }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} notes deleted successfully`,
+      data: null
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      data: null
+    });
+  }
+};
+
+
+module.exports = {
+  createNote,
+  multipleNotes,
+  getAllNotes,
+  getNotesById,
+  UpdateById,
+  UpdateFieldId,
+  deleteById,
+  deleteMulti
+};
